@@ -1,18 +1,20 @@
 const fs = require('fs')
 const _ = require('lodash')
 
-function getUrlTimeMap (filePath) {
+const allKey = 'all'
+
+function getUrlTimeMap (filePath, eventName) {
   const file = fs.readFileSync(filePath, { encoding: 'utf8' })
   const events = JSON.parse(file)
-  const filteredEvents = events.filter(e => e.name === 'XHRLoad')
-  return createUrlMap(filteredEvents)
+  const filteredEvents = events.filter(e => e.name === eventName)
+  return createUrlMap(filteredEvents, eventName)
 }
 
-function createUrlMap (events) {
-  const map = {}
+function createUrlMap(events, defaultKeyName) {
+  const map = { [allKey]: [] }
 
   events.forEach(t => {
-    const key = t.args.data.url
+    const key = t.args.data.url || defaultKeyName
     const dur = t.dur || 0
     if (!dur) {return}
     if (!map[key]) {
@@ -20,17 +22,20 @@ function createUrlMap (events) {
     } else {
       map[key].push(dur)
     }
+    map[allKey].push(dur)
   })
-
   return _.mapValues(map, value => +(_.mean(value).toFixed(0)))
 }
 
-function compare (firstPath, secondPath) {
-  const map1 = getUrlTimeMap(firstPath)
-  const map2 = getUrlTimeMap(secondPath)
+function compare (firstPath, secondPath, eventName, showTotal = true) {
+  const map1 = getUrlTimeMap(firstPath, eventName)
+  const map2 = getUrlTimeMap(secondPath, eventName)
   const diffLabel = 'diff(%)'
   let resultsTable = [];
   _.uniq([...Object.keys(map1), ...Object.keys(map2)]).forEach(key => {
+    if(key===allKey && !showTotal){
+      return
+    }
     const val1 = map1[key]
     const val2 = map2[key]
     if (val1 && val2) {
@@ -38,9 +43,17 @@ function compare (firstPath, secondPath) {
       resultsTable.push({ url: key.substring(0, 80), [firstPath]: val1, [secondPath]: val2, [diffLabel]: diff })
     }
   })
-  resultsTable = _.orderBy(resultsTable, diffLabel, 'desc')
-  console.table(resultsTable)
+  resultsTable.sort((a, b) => b.url === allKey ? 0 : b[diffLabel] - a[diffLabel])
 
+  console.table(resultsTable)
 }
 
-compare('xhr_patched.json', 'xhr_not_patched.json')
+function compareXHR (first, second) {
+  compare('xhr/' + first, 'xhr/' + second, 'XHRLoad')
+}
+
+function compareTimer (first, second) {
+  compare('timer/' + first, 'timer/' + second, 'TimerFire', false)
+}
+
+compareXHR('xhr_patched.json', 'xhr_not_patched.json')
