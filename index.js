@@ -1,5 +1,6 @@
 const fs = require('fs')
 const _ = require('lodash')
+
 function getUrlTimeMap (filePath) {
   const file = fs.readFileSync(filePath, { encoding: 'utf8' })
   const events = JSON.parse(file)
@@ -20,8 +21,8 @@ function createUrlMap (events) {
       map[key].push(dur)
     }
   })
-  Object.keys(map).forEach(key => map[key] = +_.mean(map[key]).toFixed(0))
-  return map
+
+  return _.mapValues(map, value => +(_.mean(value).toFixed(0)))
 }
 
 function compare (firstPath, secondPath) {
@@ -34,7 +35,7 @@ function compare (firstPath, secondPath) {
     const val2 = map2[key]
     if (val1 && val2) {
       const diff = +((val2 / val1) * 100).toFixed(0)
-      resultsTable.push({ url: key.substring(0,80), [firstPath]: val1, [secondPath]: val2, [diffLabel]: diff })
+      resultsTable.push({ url: key.substring(0, 80), [firstPath]: val1, [secondPath]: val2, [diffLabel]: diff })
     }
   })
   resultsTable = _.orderBy(resultsTable, diffLabel, 'desc')
@@ -42,9 +43,4 @@ function compare (firstPath, secondPath) {
 
 }
 
-
-////compare('big_xhr_patched.json', 'big_xhr_unpatched.json')
-////compare('page_load_patched.json', 'page_load_unpatched.json')
-//compare('boadr_right_scroll_xhr_patch.json', 'board_right_scroll_full_zone.json')
-////compare('few-requests_patched.json', 'few-requests-unpatched.json')
-//compare('two_clicks_patched.json', 'two_clicks_full_zone1.json')
+compare('xhr_patched.json', 'xhr_not_patched.json')
