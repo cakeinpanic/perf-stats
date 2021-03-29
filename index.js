@@ -57,3 +57,4 @@ function compareTimer (first, second) {
 }
 
 compareXHR('xhr_patched.json', 'xhr_not_patched.json')
+compareTimer('timers_patched.json', 'timers_not_patched.json')
